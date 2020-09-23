@@ -18,12 +18,14 @@
 #include <string.h>	  /* support any string ops */
 #include <stdarg.h>
 #include <errno.h>
+#include <time.h>
 
 
 #define RCVBUFSIZE 512		/* The receive buffer size */
 #define SNDBUFSIZE 512		/* The send buffer size */
 #define BUFSIZE 40		/* Your name can be as many as 40 chars*/
 #define MAXSIZE 25
+#define WINDOWSIZE 60
 
 typedef struct {
     int mySavings;
@@ -36,12 +38,25 @@ typedef struct {
 void err_n_die(char *fmt, ...);
 int doStuff(int *balance, int *amount, char *next_account);
 void send_to_client(int *clientSock, char *buf);
+int checkTime(time_t *time_arr, int *count);
 
 /* The main function */
 int main(int argc, char *argv[])
 {
 
     Account_Balances accounts = {1000, 2000, 3000, 4000, 5000};
+
+    time_t *time_mySavings = malloc(sizeof(time_t) * 3);
+    int counter_mySavings = 0;
+    time_t *time_myChecking = malloc(sizeof(time_t) * 3);
+    int counter_myChecking = 0;
+    time_t *time_myCD = malloc(sizeof(time_t) * 3);
+    int counter_myCD = 0;
+    time_t *time_my401k = malloc(sizeof(time_t) * 3);
+    int counter_my401k = 0;
+    time_t *time_my529 = malloc(sizeof(time_t) * 3);
+    int counter_my529 = 0;
+
 
     int serverSock;				/* Server Socket */
     int clientSock;				/* Client Socket */
@@ -97,126 +112,154 @@ int main(int argc, char *argv[])
     while(1)
     {
 
-    printf("\nWaiting for connections on %s:%s\n", argv[1], argv[2]);
-    fflush(stdout);
+        printf("\nWaiting for connections on %s:%s\n", argv[1], argv[2]);
+        fflush(stdout);
 
-	/* Accept incoming connection */
-	/*	FILL IN	    */
-    clntLen = sizeof(changeClntAddr);
-    clientSock = accept(serverSock, (struct sockaddr *) &changeClntAddr, &clntLen);
-    if (clientSock < 0)
-        err_n_die("error with accept");
+    	/* Accept incoming connection */
+    	/*	FILL IN	    */
+        clntLen = sizeof(changeClntAddr);
+        clientSock = accept(serverSock, (struct sockaddr *) &changeClntAddr, &clntLen);
+        if (clientSock < 0)
+            err_n_die("error with accept");
 
-    inet_ntop(AF_INET, &changeClntAddr, client_addr, MAXSIZE);
-    printf("Client connection IP address: %s\n", client_addr);
+        inet_ntop(AF_INET, &changeClntAddr, client_addr, MAXSIZE);
+        printf("Client connection IP address: %s\n", client_addr);
 
-	/* Extract the account name from the packet, store in nameBuf */
-	/* Look up account balance, store in balance */
-	/*	FILL IN	    */
+    	/* Extract the account name from the packet, store in nameBuf */
+    	/* Look up account balance, store in balance */
+    	/*	FILL IN	    */
 
-    //Init these to 0 every time
-    memset(nameBuf, 0, BUFSIZE);
-    memset(amount_string, 0, MAXSIZE);
-    amount_int = 0;
-    memset(next_account, 0, MAXSIZE);
-    memset(sndBuffer, 0, SNDBUFSIZE);
-    memset(msg, 0, RCVBUFSIZE);
+        //Init these to 0 every time
+        memset(nameBuf, 0, BUFSIZE);
+        memset(amount_string, 0, MAXSIZE);
+        amount_int = 0;
+        memset(next_account, 0, MAXSIZE);
+        memset(sndBuffer, 0, SNDBUFSIZE);
+        memset(msg, 0, RCVBUFSIZE);
 
-    recv(clientSock, msg, RCVBUFSIZE, 0); // recieving the message from client
-    //printf("msg recieved from client: %s\n", msg);
+        recv(clientSock, msg, RCVBUFSIZE, 0); // recieving the message from client
+        //printf("msg recieved from client: %s\n", msg);
 
-    request_type = msg[0];
+        request_type = msg[0];
 
-    int byte_counter = 1;
-    char *msg_tmp = msg + 1;
+        int byte_counter = 1;
+        char *msg_tmp = msg + 1;
 
-    char *x = strchr(msg_tmp, 'X');
-    int index_of_X = (int) (x - msg_tmp);
+        char *x = strchr(msg_tmp, 'X');
+        int index_of_X = (int) (x - msg_tmp);
 
-    strncpy(nameBuf, msg + byte_counter, index_of_X);
-    byte_counter += strlen(nameBuf);
-    byte_counter++;
-
-    if (request_type == 'W' || request_type == 'T') {
-        x = strchr(x + 1,'X');
-        index_of_X = (int) (x - msg_tmp);
-
-        strncpy(amount_string, msg + byte_counter, (index_of_X - byte_counter) + 1);
-        amount_int = atoi(amount_string);
-        byte_counter += strlen(amount_string);
+        strncpy(nameBuf, msg + byte_counter, index_of_X);
+        byte_counter += strlen(nameBuf);
         byte_counter++;
-        //printf("amount: %s and len: %d\n", amount_string, (int) strlen(amount_string));
+
+        if (request_type == 'W' || request_type == 'T') {
+            x = strchr(x + 1,'X');
+            index_of_X = (int) (x - msg_tmp);
+
+            strncpy(amount_string, msg + byte_counter, (index_of_X - byte_counter) + 1);
+            amount_int = atoi(amount_string);
+            byte_counter += strlen(amount_string);
+            byte_counter++;
+            //printf("amount: %s and len: %d\n", amount_string, (int) strlen(amount_string));
 
 
-    } 
-    if (request_type == 'T') {
-        x = strchr(x + 1,'X');
-        index_of_X = (int) (x - msg_tmp);
+        } 
+        if (request_type == 'T') {
+            x = strchr(x + 1,'X');
+            index_of_X = (int) (x - msg_tmp);
 
-        strncpy(next_account, msg + byte_counter, (index_of_X - byte_counter) + 1);
-        byte_counter += strlen(next_account);
-        //printf("next account: %s and len: %d\n", next_account, (int) strlen(next_account));
-    }
+            strncpy(next_account, msg + byte_counter, (index_of_X - byte_counter) + 1);
+            byte_counter += strlen(next_account);
+            //printf("next account: %s and len: %d\n", next_account, (int) strlen(next_account));
+        }
 
-	/* Return account balance to client */
-	/*	FILL IN	    */
+    	/* Return account balance to client */
+    	/*	FILL IN	    */
 
-    if (strcmp(nameBuf, "mySavings") == 0) {
-        if (doStuff(&accounts.mySavings, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
-        balance = accounts.mySavings;
-    } else if (strcmp(nameBuf, "myChecking") == 0) {
-        if (doStuff(&accounts.myChecking, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
-        balance = accounts.myChecking;
-    } else if (strcmp(nameBuf, "myCD") == 0) {
-        if (doStuff(&accounts.myCD, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
-        balance = accounts.myCD;
-    } else if (strcmp(nameBuf, "my401k") == 0) {
-        if (doStuff(&accounts.my401k, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
-        balance = accounts.my401k;
-    } else if (strcmp(nameBuf, "my529") == 0) {
-        if (doStuff(&accounts.my529, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
-        balance = accounts.my529;
-    } else {
-        err_n_die("Unknown account was passed in %s", nameBuf);
-    }
-
-    if (request_type == 'T') {
-        if (strcmp(next_account, "mySavings") == 0) {
-            accounts.mySavings += amount_int;
-            new_balance = accounts.mySavings;
-        } else if (strcmp(next_account, "myChecking") == 0) {
-            accounts.myChecking += amount_int;
-            new_balance = accounts.myChecking;
-        } else if (strcmp(next_account, "myCD") == 0) {
-            accounts.myCD += amount_int;
-            new_balance = accounts.myCD;
-        } else if (strcmp(next_account, "my401k") == 0) {
-            accounts.my401k += amount_int;
-            new_balance = accounts.my401k;
-        } else if (strcmp(next_account, "my529") == 0) {
-            accounts.my529 += amount_int;
-            new_balance = accounts.my529;
+        if (strcmp(nameBuf, "mySavings") == 0) {
+            if (request_type == 'W' && checkTime(time_mySavings, &counter_mySavings) < 0) {send_to_client(&clientSock, withdraw_error); continue;}
+            if (doStuff(&accounts.mySavings, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
+            balance = accounts.mySavings;
+        } else if (strcmp(nameBuf, "myChecking") == 0) {
+            if (request_type == 'W' && checkTime(time_myChecking, &counter_myChecking) < 0) {send_to_client(&clientSock, withdraw_error); continue;}
+            if (doStuff(&accounts.myChecking, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
+            balance = accounts.myChecking;
+        } else if (strcmp(nameBuf, "myCD") == 0) {
+            if (request_type == 'W' && checkTime(time_myCD, &counter_myCD) < 0) {send_to_client(&clientSock, withdraw_error); continue;}
+            if (doStuff(&accounts.myCD, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
+            balance = accounts.myCD;
+        } else if (strcmp(nameBuf, "my401k") == 0) {
+            if (request_type == 'W' && checkTime(time_my401k, &counter_my401k) < 0) {send_to_client(&clientSock, withdraw_error); continue;}
+            if (doStuff(&accounts.my401k, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
+            balance = accounts.my401k;
+        } else if (strcmp(nameBuf, "my529") == 0) {
+            if (request_type == 'W' && checkTime(time_my529, &counter_my529) < 0) {send_to_client(&clientSock, withdraw_error); continue;}
+            if (doStuff(&accounts.my529, &amount_int, next_account) < 0) {send_to_client(&clientSock, balance_error); continue;}
+            balance = accounts.my529;
         } else {
             err_n_die("Unknown account was passed in %s", nameBuf);
-        } 
+        }
+
+        if (request_type == 'T') {
+            if (strcmp(next_account, "mySavings") == 0) {
+                accounts.mySavings += amount_int;
+                new_balance = accounts.mySavings;
+            } else if (strcmp(next_account, "myChecking") == 0) {
+                accounts.myChecking += amount_int;
+                new_balance = accounts.myChecking;
+            } else if (strcmp(next_account, "myCD") == 0) {
+                accounts.myCD += amount_int;
+                new_balance = accounts.myCD;
+            } else if (strcmp(next_account, "my401k") == 0) {
+                accounts.my401k += amount_int;
+                new_balance = accounts.my401k;
+            } else if (strcmp(next_account, "my529") == 0) {
+                accounts.my529 += amount_int;
+                new_balance = accounts.my529;
+            } else {
+                err_n_die("Unknown account was passed in %s", nameBuf);
+            } 
+        }
+
+        //printf("balance is now: %d\n", balance); printf("New balance is now: %d\n", new_balance);exit(1);
+
+        char balance_string[MAXSIZE];
+        snprintf(balance_string, MAXSIZE, "%d", balance); // convert int balance to a string to send over
+
+        if (request_type == 'B') {
+            strncpy(sndBuffer, balance_message, strlen(balance_message));
+            strncpy(sndBuffer+strlen(balance_message), balance_string, strlen(balance_string));
+            send_to_client(&clientSock, sndBuffer);
+        } else {
+            send_to_client(&clientSock, success_message);
+        }
+
     }
-
-    //printf("balance is now: %d\n", balance); printf("New balance is now: %d\n", new_balance);exit(1);
-
-    char balance_string[MAXSIZE];
-    snprintf(balance_string, MAXSIZE, "%d", balance); // convert int balance to a string to send over
-
-    if (request_type == 'B') {
-        strncpy(sndBuffer, balance_message, strlen(balance_message));
-        strncpy(sndBuffer+strlen(balance_message), balance_string, strlen(balance_string));
-        send_to_client(&clientSock, sndBuffer);
-    } else {
-        send_to_client(&clientSock, success_message);
-    }
-
-    }
-
 }
+
+
+int checkTime(time_t *time_arr, int *count) {
+    time_t *start = time_arr;
+    time_t current = time(NULL);
+
+    if (*count < 3) {
+        // if count is under 3, can fit a new one regardless
+        *(time_arr + *count) = current;
+        (*count)++;
+        return 1;
+    } else {
+        if (difftime(current, *start) < WINDOWSIZE) return -1; 
+
+        else {
+            //update the array
+            *start = *(time_arr + 1);
+            *(time_arr + 1) = *(time_arr + 2);
+            *(time_arr + 2) = current;
+            return 1;
+        }
+    }
+}
+
 
 int doStuff(int *balance, int *amount, char *next_account) {
     if (*amount == 0) return 0;
